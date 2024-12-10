@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Бюджет</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .sidebar a.active, .sidebar a:hover {
+            background-color: #34495e;
+        }
+        .sidebar a i {
+            margin-right: 10px;
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+        }
+        .table td, .table th {
+            vertical-align: middle;
+        }
+        .total-row {
+            font-weight: bold;
+        }
+        .transaction-category {
+            color: gray;
+            font-size: 0.9em;
+        }
+        .btn-add-transaction {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50%;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .modal-header {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2 class="text-center mb-4">Бюджет</h2>
+        <a href="#balance" class="active" onclick="showPage('balance')">
+            <i class="bi bi-graph-up"></i> Баланс
+        </a>
+        <a href="#incomes" onclick="showPage('incomes')">
+            <i class="bi bi-cash-stack"></i> Доходы
+        </a>
+        <a href="#expenses" onclick="showPage('expenses')">
+            <i class="bi bi-cart4"></i> Расходы
+        </a>
+        <a href="#settings" onclick="showPage('settings')">
+            <i class="bi bi-gear"></i> Настройки
+        </a>
+    </div>
+
+    <div class="content">
+        <!-- Страница Баланса -->
+        <div id="balancePage">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="text-primary">Баланс</h1>
+                <div class="d-flex">
+                    <div class="btn-group me-2">
+                        <button class="btn btn-outline-secondary active" id="filterAllBtn" onclick="changeTransactionFilter('all')">Все</button>
+                        <button class="btn btn-outline-secondary" id="filterIncomeBtn" onclick="changeTransactionFilter('income')">Доходы</button>
+                        <button class="btn btn-outline-secondary" id="filterExpenseBtn" onclick="changeTransactionFilter('expense')">Расходы</button>
+                    </div>
+                    <div class="btn-group me-2">
+                        <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="balanceTimeRangeBtn">
+                            Текущая неделя
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="changeTimeRange('week', 'balance')">Текущая неделя</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeTimeRange('month', 'balance')">Текущий месяц</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeTimeRange('year', 'balance')">Текущий год</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <canvas id="balanceChart" width="400" height="200"></canvas>
+        </div>
+
+        <!-- Страница Доходов -->
+        <div id="incomesPage" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="text-primary">Доходы</h1>
+                <div>
+                    <button class="btn btn-secondary me-2" onclick="handleExport('incomes')">
+                        <i class="bi bi-download"></i> Экспорт
+                    </button>
+                    <div class="btn-group me-2">
+                        <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="incomesTimeRangeBtn">
+                            Текущая неделя
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="changeTimeRange('week', 'incomes')">Текущая неделя</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeTimeRange('month', 'incomes')">Текущий месяц</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeTimeRange('year', 'incomes')">Текущий год</a></li>
+                        </ul>
+                    </div>
+                    <button class="btn-add-transaction" onclick="addIncome()">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th class="text-end">Сумма</th>
+                    </tr>
+                </thead>
+                <tbody id="incomesTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Страница Расходов -->
+        <div id="expensesPage" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="text-primary">Расходы</h1>
+                <div>
+                    <button class="btn btn-secondary me-2" onclick="handleExport('expenses')">
+                        <i class="bi bi-download"></i> Экспорт
+                    </button>
+                    <div class="btn-group me-2">
+                        <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="expensesTimeRangeBtn">
+                            Текущая неделя
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="changeTimeRange('week', 'expenses')">Текущая неделя</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeTimeRange('month', 'expenses')">Текущий месяц</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeTimeRange('year', 'expenses')">Текущий год</a></li>
+                        </ul>
+                    </div>
+                    <button class="btn-add-transaction" onclick="addExpense()">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th class="text-end">Сумма</th>
+                    </tr>
+                </thead>
+                <tbody id="expensesTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Страница Настроек -->
+        <div id="settingsPage" style="display: none;">
+            <h1 class="text-primary">Настройки</h1>
+            <p>Настройки приложения будут здесь.</p>
+        </div>
+
+        <!-- Модальное окно для добавления или редактирования транзакции -->
+        <div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="transactionForm">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="transactionModalLabel">Добавить запись</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="transactionType">
+                            <div class="mb-3">
+                                <label for="transactionName" class="form-label">Название</label>
+                                <input type="text" class="form-control" id="transactionName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="transactionCategory" class="form-label">Категория</label>
+                                <select class="form-select" id="transactionCategory" required></select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="transactionValue" class="form-label">Сумма</label>
+                                <input type="number" class="form-control" id="transactionValue" min="0" step="0.01" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="transactionCurrency" class="form-label">Валюта</label>
+                                <select class="form-select" id="transactionCurrency" required></select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="transactionDate" class="form-label">Дата</label>
+                                <input type="date" class="form-control" id="transactionDate" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем классы до budget.js -->
+    <script src="budgetClasses.js"></script>
+    <script src="budget.js"></script>
+    <script>
+        let editTransactionIndex = null;
+        let currentTransactionType = null;
+        let currentTransactionFilter = 'all';
+
+        async function showPage(pageId) {
+            document.querySelectorAll('.content > div').forEach(page => {
+                page.style.display = 'none';
+            });
+            document.getElementById(`${pageId}Page`).style.display = 'block';
+
+            document.querySelectorAll('.sidebar a').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`.sidebar a[href="#${pageId}"]`).classList.add('active');
+
+            await loadBudgetFromServer();
+
+            if (pageId === 'balance') {
+                updateBalanceChart();
+            } else if (pageId === 'expenses') {
+                renderExpenses();
+            } else if (pageId === 'incomes') {
+                renderIncomes();
+            }
+        }
+
+        function changeTimeRange(range, page) {
+            if (page === 'balance') {
+                document.getElementById('balanceTimeRangeBtn').textContent = 
+                    range === 'week' ? 'Текущая неделя' : 
+                    range === 'month' ? 'Текущий месяц' : 
+                    'Текущий год';
+                updateBalanceChart(range);
+            } else if (page === 'expenses') {
+                document.getElementById('expensesTimeRangeBtn').textContent = 
+                    range === 'week' ? 'Текущая неделя' : 
+                    range === 'month' ? 'Текущий месяц' : 
+                    'Текущий год';
+                renderExpenses(range);
+            } else if (page === 'incomes') {
+                document.getElementById('incomesTimeRangeBtn').textContent = 
+                    range === 'week' ? 'Текущая неделя' : 
+                    range === 'month' ? 'Текущий месяц' : 
+                    'Текущий год';
+                renderIncomes(range);
+            }
+        }
+
+        function changeTransactionFilter(filter) {
+            currentTransactionFilter = filter;
+
+            document.getElementById('filterAllBtn').classList.remove('active');
+            document.getElementById('filterIncomeBtn').classList.remove('active');
+            document.getElementById('filterExpenseBtn').classList.remove('active');
+
+            if (filter === 'all') {
+                document.getElementById('filterAllBtn').classList.add('active');
+            } else if (filter === 'income') {
+                document.getElementById('filterIncomeBtn').classList.add('active');
+            } else if (filter === 'expense') {
+                document.getElementById('filterExpenseBtn').classList.add('active');
+            }
+
+            updateBalanceChart();
+        }
+
+        function getDateRange(timeRange = 'week') {
+            const now = new Date();
+            let startDate, endDate;
+
+            if (timeRange === 'week') {
+                const dayOfWeek = now.getDay();
+                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+                endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - dayOfWeek));
+            } else if (timeRange === 'month') {
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            } else if (timeRange === 'year') {
+                startDate = new Date(now.getFullYear(), 0, 1);
+                endDate = new Date(now.getFullYear(), 11, 31);
+            }
+
+            startDate = startDate.toISOString().split('T')[0];
+            endDate = endDate.toISOString().split('T')[0];
+            return { startDate, endDate };
+        }
+
+        function createBalanceChart(chartType = 'line', timeRange = 'week') {
+            const ctx = document.getElementById('balanceChart').getContext('2d');
+            const { startDate, endDate } = getDateRange(timeRange);
+
+            const transactions = myBudget.filterTransactions(startDate, endDate, currentTransactionFilter);
+
+            const dateLabels = [];
+            const now = new Date(startDate);
+            const end = new Date(endDate);
+
+            while (now <= end) {
+                dateLabels.push(now.toISOString().split('T')[0]);
+                now.setDate(now.getDate() + 1);
+            }
+
+            let balance = 0;
+            const balanceData = [];
+
+            dateLabels.forEach(date => {
+                const dayTransactions = transactions.filter(t => t.date === date);
+
+                if (currentTransactionFilter === 'income') {
+                    let dailyTotal = 0;
+                    dayTransactions.forEach(transaction => {
+                        if (transaction.transactionType === 'income') {
+                            dailyTotal += transaction.value;
+                        }
+                    });
+                    balance += dailyTotal;
+                } else if (currentTransactionFilter === 'expense') {
+                    let dailyTotal = 0;
+                    dayTransactions.forEach(transaction => {
+                        if (transaction.transactionType === 'expense') {
+                            dailyTotal += transaction.value;
+                        }
+                    });
+                    balance += dailyTotal;
+                } else {
+                    dayTransactions.forEach(transaction => {
+                        if (transaction.transactionType === 'income') {
+                            balance += transaction.value;
+                        } else if (transaction.transactionType === 'expense') {
+                            balance -= transaction.value;
+                        }
+                    });
+                }
+                balanceData.push(balance);
+            });
+
+            if (balanceChart) {
+                balanceChart.destroy();
+            }
+
+            balanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dateLabels,
+                    datasets: [{
+                        label: currentTransactionFilter === 'income' ? 'Доходы' : currentTransactionFilter === 'expense' ? 'Расходы' : 'Баланс',
+                        data: balanceData,
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                        tension: 0,
+                        pointBackgroundColor: '#007bff',
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        },
+                        tooltip: {
+                            enabled: true,
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
+                                    if (currentTransactionFilter === 'income') {
+                                        return `Доходы: ${value}`;
+                                    } else if (currentTransactionFilter === 'expense') {
+                                        return `Расходы: ${value}`;
+                                    } else {
+                                        return `Баланс: ${value}`;
+                                    }
+                                }
+                            }
+                        },
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Дата'
+                            },
+                            ticks: {
+                                autoSkip: true,
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Сумма'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateBalanceChart(timeRange = 'week') {
+            createBalanceChart('line', timeRange);
+        }
+
+        function renderExpenses(timeRange = 'week') {
+            const { startDate, endDate } = getDateRange(timeRange);
+            const expensesTableBody = document.getElementById('expensesTableBody');
+            expensesTableBody.innerHTML = '';
+
+            const filteredExpenses = myBudget.expenses.filter(expense => {
+                const date = new Date(expense.date);
+                return date >= new Date(startDate) && date <= new Date(endDate);
+            });
+
+            let total = 0;
+
+            filteredExpenses.forEach((expense, index) => {
+                const tr = document.createElement('tr');
+
+                const tdName = document.createElement('td');
+                tdName.innerHTML = `
+                    ${expense.name}
+                    <i class="bi bi-pencil ms-2" style="cursor:pointer;" onclick="editTransaction(${index}, 'expense')"></i>
+                    <i class="bi bi-trash ms-2" style="cursor:pointer; color: red;" onclick="deleteTransaction(${index}, 'expense')"></i>
+                    <div class="transaction-category">${expense.type.name}</div>
+                `;
+                tr.appendChild(tdName);
+
+                const tdValue = document.createElement('td');
+                tdValue.className = 'text-end';
+                tdValue.textContent = `${expense.value} ${expense.currency.name}`;
+                tr.appendChild(tdValue);
+
+                expensesTableBody.appendChild(tr);
+
+                total += expense.value;
+            });
+
+            const trTotal = document.createElement('tr');
+            trTotal.className = 'total-row';
+
+            const tdTotalLabel = document.createElement('td');
+            tdTotalLabel.textContent = 'Итого';
+            trTotal.appendChild(tdTotalLabel);
+
+            const tdTotalValue = document.createElement('td');
+            tdTotalValue.className = 'text-end';
+            tdTotalValue.textContent = `${total} ₽`;
+            trTotal.appendChild(tdTotalValue);
+
+            expensesTableBody.appendChild(trTotal);
+        }
+
+        function renderIncomes(timeRange = 'week') {
+            const { startDate, endDate } = getDateRange(timeRange);
+            const incomesTableBody = document.getElementById('incomesTableBody');
+            incomesTableBody.innerHTML = '';
+
+            const filteredIncomes = myBudget.incomes.filter(income => {
+                const date = new Date(income.date);
+                return date >= new Date(startDate) && date <= new Date(endDate);
+            });
+
+            let total = 0;
+
+            filteredIncomes.forEach((income, index) => {
+                const tr = document.createElement('tr');
+
+                const tdName = document.createElement('td');
+                tdName.innerHTML = `
+                    ${income.name}
+                    <i class="bi bi-pencil ms-2" style="cursor:pointer;" onclick="editTransaction(${index}, 'income')"></i>
+                    <i class="bi bi-trash ms-2" style="cursor:pointer; color: red;" onclick="deleteTransaction(${index}, 'income')"></i>
+                    <div class="transaction-category">${income.type.name}</div>
+                `;
+                tr.appendChild(tdName);
+
+                const tdValue = document.createElement('td');
+                tdValue.className = 'text-end';
+                tdValue.textContent = `${income.value} ${income.currency.name}`;
+                tr.appendChild(tdValue);
+
+                incomesTableBody.appendChild(tr);
+
+                total += income.value;
+            });
+
+            const trTotal = document.createElement('tr');
+            trTotal.className = 'total-row';
+
+            const tdTotalLabel = document.createElement('td');
+            tdTotalLabel.textContent = 'Итого';
+            trTotal.appendChild(tdTotalLabel);
+
+            const tdTotalValue = document.createElement('td');
+            tdTotalValue.className = 'text-end';
+            tdTotalValue.textContent = `${total}`;
+            trTotal.appendChild(tdTotalValue);
+
+            incomesTableBody.appendChild(trTotal);
+        }
+
+        function deleteTransaction(index, type) {
+            if (type === 'income') {
+                myBudget.incomes.splice(index, 1);
+                renderIncomes();
+            } else if (type === 'expense') {
+                myBudget.expenses.splice(index, 1);
+                renderExpenses();
+            }
+            saveBudgetToServer();
+            updateBalanceChart();
+        }
+
+        function addIncome() {
+            editTransactionIndex = null;
+            currentTransactionType = 'income';
+            document.getElementById('transactionModalLabel').textContent = 'Добавить доход';
+            document.getElementById('transactionForm').reset();
+            populateTransactionForm();
+            const transactionModal = new bootstrap.Modal(document.getElementById('transactionModal'));
+            transactionModal.show();
+        }
+
+        function addExpense() {
+            editTransactionIndex = null;
+            currentTransactionType = 'expense';
+            document.getElementById('transactionModalLabel').textContent = 'Добавить расход';
+            document.getElementById('transactionForm').reset();
+            populateTransactionForm();
+            const transactionModal = new bootstrap.Modal(document.getElementById('transactionModal'));
+            transactionModal.show();
+        }
+
+        function editTransaction(index, type) {
+            editTransactionIndex = index;
+            currentTransactionType = type;
+            const transaction = type === 'income' ? myBudget.incomes[index] : myBudget.expenses[index];
+            document.getElementById('transactionModalLabel').textContent = type === 'income' ? 'Редактировать доход' : 'Редактировать расход';
+            populateTransactionForm(transaction);
+            const transactionModal = new bootstrap.Modal(document.getElementById('transactionModal'));
+            transactionModal.show();
+        }
+
+        function populateTransactionForm(transaction = {}) {
+            const transactionCategorySelect = document.getElementById('transactionCategory');
+            transactionCategorySelect.innerHTML = '';
+            const types = currentTransactionType === 'income' ? myBudget.incomeTypes : myBudget.expenseTypes;
+            types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type.name;
+                option.textContent = type.name;
+                if (transaction.type && transaction.type.name === type.name) {
+                    option.selected = true;
+                }
+                transactionCategorySelect.appendChild(option);
+            });
+
+            const transactionCurrencySelect = document.getElementById('transactionCurrency');
+            transactionCurrencySelect.innerHTML = '';
+            myBudget.currencies.forEach(currency => {
+                const option = document.createElement('option');
+                option.value = currency.name;
+                option.textContent = currency.name;
+                if (transaction.currency && transaction.currency.name === currency.name) {
+                    option.selected = true;
+                }
+                transactionCurrencySelect.appendChild(option);
+            });
+
+            document.getElementById('transactionName').value = transaction.name || '';
+            document.getElementById('transactionValue').value = transaction.value || '';
+            document.getElementById('transactionDate').value = transaction.date || new Date().toISOString().split('T')[0];
+        }
+
+        document.getElementById('transactionForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('transactionName').value.trim();
+            const typeName = document.getElementById('transactionCategory').value;
+            const value = parseFloat(document.getElementById('transactionValue').value);
+            const currencyName = document.getElementById('transactionCurrency').value;
+            const date = document.getElementById('transactionDate').value;
+
+            if (editTransactionIndex !== null) {
+                if (currentTransactionType === 'income') {
+                    myBudget.incomes[editTransactionIndex].value = value;
+                    myBudget.incomes[editTransactionIndex].type = { name: typeName };
+                    myBudget.incomes[editTransactionIndex].date = date;
+                    myBudget.incomes[editTransactionIndex].currency = { name: currencyName };
+                    myBudget.incomes[editTransactionIndex].name = name;
+                } else {
+                    myBudget.expenses[editTransactionIndex].value = value;
+                    myBudget.expenses[editTransactionIndex].type = { name: typeName };
+                    myBudget.expenses[editTransactionIndex].date = date;
+                    myBudget.expenses[editTransactionIndex].currency = { name: currencyName };
+                    myBudget.expenses[editTransactionIndex].name = name;
+                }
+            } else {
+                if (currentTransactionType === 'income') {
+                    myBudget.incomes.push({
+                        value: value,
+                        type: { name: typeName },
+                        date: date,
+                        currency: { name: currencyName },
+                        name: name,
+                        transactionType: 'income'
+                    });
+                } else {
+                    myBudget.expenses.push({
+                        value: value,
+                        type: { name: typeName },
+                        date: date,
+                        currency: { name: currencyName },
+                        name: name,
+                        transactionType: 'expense'
+                    });
+                }
+            }
+
+            const transactionModal = bootstrap.Modal.getInstance(document.getElementById('transactionModal'));
+            transactionModal.hide();
+
+            if (currentTransactionType === 'income') {
+                renderIncomes();
+            } else {
+                renderExpenses();
+            }
+
+            updateBalanceChart();
+            saveBudgetToServer();
+        });
+
+        function handleExport(type) {
+            alert(`Функция экспорта для ${type} пока не реализована.`);
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadBudgetFromServer();
+            document.getElementById('filterAllBtn').classList.add('active');
+            createBalanceChart();
+            renderExpenses();
+            renderIncomes();
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.js"></script>
+</body>
+</html>

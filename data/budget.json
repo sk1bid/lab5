@@ -1,0 +1,67 @@
+{
+  "currencies": [
+    {
+      "name": "USD",
+      "rates": []
+    },
+    {
+      "name": "EUR",
+      "rates": []
+    },
+    {
+      "name": "₽",
+      "rates": []
+    }
+  ],
+  "expenseTypes": [
+    {
+      "name": "Прочие расходы"
+    },
+    {
+      "name": "Супермаркеты"
+    },
+    {
+      "name": "Транспорт"
+    },
+    {
+      "name": "Развлечения"
+    }
+  ],
+  "incomeTypes": [
+    {
+      "name": "Зарплата"
+    },
+    {
+      "name": "Фриланс"
+    },
+    {
+      "name": "Подарки"
+    }
+  ],
+  "expenses": [
+    {
+      "value": 5000,
+      "type": {
+        "name": "Развлечения"
+      },
+      "date": "2024-12-12",
+      "currency": {
+        "name": "USD"
+      },
+      "name": "Телефонш"
+    }
+  ],
+  "incomes": [
+    {
+      "value": 5600,
+      "type": {
+        "name": "Зарплата"
+      },
+      "date": "2024-12-10",
+      "currency": {
+        "name": "USD"
+      },
+      "name": "Телефон"
+    }
+  ]
+}
